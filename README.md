@@ -1,120 +1,36 @@
-# RFQ-matching-using-n8n
-📋 Overview
-This project builds an automated n8n workflow that:
+**RFQ Product Matching System**
 
-Accepts a Hebrew PDF of products via Telegram Bot,
+**📋 Overview**
 
-Extracts the product descriptions,
+This project automates the process of matching RFQ product descriptions with a master catalog using n8n, LLM translation, and vector similarity search.
 
-Translates them using an LLM from OpenRouter,
+**The system:**
 
-Embeds both the translated descriptions and catalog descriptions into vectors,
 
-Matches translated descriptions with catalog descriptions using cosine similarity,
+Accepts a Hebrew PDF through Telegram,
 
-Saves the matched results into a CSV,
+Extracts product descriptions,
 
-Sends the CSV back to the user via Telegram Bot.
+Translates them to English using an LLM,
 
-🔥 Workflow Steps (End-to-End)
-Telegram Trigger
+Embeds both translated and catalog descriptions into vectors,
 
-User uploads a Hebrew RFQ PDF through Telegram bot.
+Matches them using cosine similarity,
 
-The workflow starts automatically.
+Generates a CSV of matched results,
 
-Extract Text (Docling/Custom Extraction)
+Sends the CSV file back via Telegram.
 
-Parse the PDF.
+**🛠️ Tech Stack**
 
-Extract the second column ("תיאור" - description) which contains the product descriptions.
+n8n (Automation Platform)
 
-Translate Descriptions (OpenRouter LLM API)
+OpenRouter (LLM API for translation)
 
-Each extracted Hebrew description is translated into English.
+Local or external embedding server
 
-This is done one-by-one using a LLM node via OpenRouter API.
+Telegram Bot API
 
-Prepare Descriptions for Embedding
+🎬 Full Walkthrough Video
+➡️ Watch the full execution and explanation in : [https://drive.google.com/file/d/1VSacZTa9TE9GjvnruU3qylYcLsNCZG0e/view?usp=drive_link](url)
 
-Catalog descriptions (already stored) and translated descriptions are merged together.
-
-Data is structured as:
-
-Column: description
-
-Column: embedding
-
-Embed Descriptions
-
-Each description (both catalog and translated) is converted into vector embeddings.
-
-Embeddings are either generated locally (custom server) or through another LLM.
-
-Merge Inputs and Clean Up
-
-Both catalog and translated embeddings are merged into a single input.
-
-Proper parsing is ensured (arrays, not strings).
-
-Matching Using Cosine Similarity
-
-First 511 items are catalog embeddings.
-
-Remaining items are translated embeddings.
-
-For each translated description:
-
-Compare against all catalog embeddings using cosine similarity.
-
-Pick the best match if similarity exceeds a threshold (e.g., 0.85).
-
-Generate Match Results
-
-For every successful match:
-
-Save the translated description and the matched catalog description.
-
-Create CSV
-
-Matched results are compiled into a CSV format (two columns):
-
-translated_description
-
-matched_catalog_description
-
-CSV file is generated dynamically.
-
-Send Back via Telegram
-
-The CSV is converted into a binary file.
-
-The bot sends the CSV file back to the user through the Telegram chat.
-
-🛠️ Technical Stack
-Framework: n8n
-
-Language: JavaScript (for Function nodes)
-
-LLM Provider: OpenRouter (Free models supported)
-
-Vector DB: (Optional) Supabase or Local Server
-
-Bot API: Telegram Bot API
-
-Libraries Used: Buffer (for file conversion)
-
-🧠 Special Handling
-Waiting for Both Inputs: Before embedding or matching, catalog and translation data are synced carefully.
-
-Error Handling:
-
-Missing embeddings or parsing issues are skipped safely.
-
-Clear error messages if input data is invalid.
-
-Optimization:
-
-Only relevant matches above similarity threshold are returned.
-
-No unnecessary fields like embeddings are included in the final CSV.
