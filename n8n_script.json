@@ -1,0 +1,985 @@
+{
+  "name": "n8n intern project",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "14X-1poIlsiuIsyC_9MLjK86-wY5Cn3i44zbfMXra8Q0",
+          "mode": "list",
+          "cachedResultName": "catalog example 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14X-1poIlsiuIsyC_9MLjK86-wY5Cn3i44zbfMXra8Q0/edit?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1560,
+        -240
+      ],
+      "id": "5be48c7f-36b9-4f2b-bf3e-8cc7a2c5bebb",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "56Z08FyakplKx2f3",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -1380,
+        -240
+      ],
+      "id": "b3922e6e-0fb3-4c3a-b354-a044e8259e8a",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -1140,
+        380
+      ],
+      "id": "4fd53263-ba3c-4ae7-b439-d93c69bc8cc9",
+      "name": "parsing file contents for extraction"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Input: items (each with code, description, quantity)\n# Output: list of { description }\n\noutput = []\nfor item in items:\n    description = item['json']['description']\n    output.append({ \"json\": { \"description\": description } })\nreturn output\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        380
+      ],
+      "id": "edd7dbb5-b2c0-49cd-99ec-6c4615a49eb7",
+      "name": "getting just the description part"
+    },
+    {
+      "parameters": {
+        "jsCode": "const translatedDescriptions = [];\n\nfor (const item of items) {\n    const response = item.json;\n\n    // Accessing the translated content properly\n    const translatedDescription = response.choices?.[0]?.message?.content || \"No translation\";\n\n    translatedDescriptions.push({ json: { translatedDescription } });\n}\n\nreturn translatedDescriptions;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        380
+      ],
+      "id": "54524b15-5d82-4baa-a792-121227516f51",
+      "name": "Extracting response from the llm"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "89323597-7210-4767-bb88-72d0e7adee0c",
+              "name": "translatedDescription",
+              "value": "={{ $json.translatedDescription }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -120,
+        380
+      ],
+      "id": "e2f689e1-b991-4e3e-b3d9-d00364ccc2e7",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4f655441-9e98-46b2-bc5b-b7bf4d940344",
+              "name": "catalogDescription",
+              "value": "={{ $json.catalogDescription }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1020,
+        -240
+      ],
+      "id": "e5da1a83-c5ec-4092-a583-db6bf1c14a5c",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = [];\n\nfor (const item of items) {\n  const description = item.json[\"תאור\"] || item.json[\"Description\"] || \"\";\n  if (description) {\n    output.push({\n      json: {\n        catalogDescription: description\n      }\n    });\n  }\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        -240
+      ],
+      "id": "de65c22c-a1fa-48e0-97e4-97a156e7c447",
+      "name": "getting catalog description alone"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert array of objects into { texts: [ ... ] }\nconst texts = items.map(item => item.json.catalogDescription);\nreturn [\n  {\n    json: {\n      texts: texts\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -820,
+        -240
+      ],
+      "id": "08a8249a-c156-49a5-a8bf-4bd2d61dda61",
+      "name": "merging all descriptions"
+    },
+    {
+      "parameters": {
+        "jsCode": "const descriptions = $items(\"Edit Fields\").map(item => item.json.catalogDescription);\nconst embeddings = $json.embeddings;\n\nreturn descriptions.map((desc, index) => {\n  return {\n    json: {\n      description: desc,\n      embedding: embeddings[index]\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        -240
+      ],
+      "id": "f7d8f37f-a94a-4875-a931-1bf56ba04e57",
+      "name": "remapping it all in a structured format for the database insertion"
+    },
+    {
+      "parameters": {
+        "tableId": "catalog_embeddings_final",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "description",
+              "fieldValue": "={{$json['description']}}"
+            },
+            {
+              "fieldId": "embedding",
+              "fieldValue": "={{$json['embedding']}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        -520
+      ],
+      "id": "100b0367-c1c2-47db-8d30-eb89a3794d70",
+      "name": "storing catalog in db",
+      "credentials": {
+        "supabaseApi": {
+          "id": "kMPzlbBQt1wdvIU6",
+          "name": "Supabase account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "tableId": "translated_embeddings_final",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "description",
+              "fieldValue": "={{$json['description']}}"
+            },
+            {
+              "fieldId": "embedding",
+              "fieldValue": "={{$json['embedding']}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        600,
+        700
+      ],
+      "id": "a6b0b181-a1fb-4198-b725-1be2db7d5ea6",
+      "name": "Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "kMPzlbBQt1wdvIU6",
+          "name": "Supabase account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import re\n\n# Get the input item\nitem = items[0]\n\n# Access the 'text' field properly\ntext = item[\"json\"][\"text\"]\n\n# Split into blocks starting with the code line\nblocks = re.split(r\"\\n(?=\\d{2}\\.\\d{2}\\.\\d{4})\", text)\n\n# Final list\noutput = []\nfor block in blocks:\n    lines = block.strip().split('\\n')\n    \n    if len(lines) >= 2:\n        code = lines[0].strip()\n        description = ' '.join(lines[1:-1]).strip()\n        quantity_line = lines[-1].strip()\n        \n        # Try extracting quantity as the last number\n        match = re.search(r'(\\d+)$', quantity_line)\n        quantity = match.group(1) if match else ''\n        \n        output.append({\n            \"code\": code,\n            \"description\": description,\n            \"quantity\": quantity\n        })\n\n# Return the parsed items to the next node\nreturn output\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -920,
+        380
+      ],
+      "id": "c9fee051-33a8-433e-97d6-a710b8e5d708",
+      "name": "extracting pdf contents"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "71f9f7d9-db16-46e0-bcb5-9f23a922f9b6",
+              "name": "description",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "acfcb9d0-be58-4cdf-bfc0-d78f906f67d1",
+              "name": "embedding",
+              "value": "={{ $json.embedding }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -180,
+        -240
+      ],
+      "id": "887c9826-a141-4d50-8424-1ba9710631a5",
+      "name": "SetCatalogEmbeddings"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1ac9dcc2-2713-4b1b-8468-38fa61104f0b",
+              "name": "description",
+              "value": "={{$json['description']}}",
+              "type": "string"
+            },
+            {
+              "id": "c363db7e-e7ae-4542-956b-8eed275b8ec1",
+              "name": "embedding",
+              "value": "={{$json['embedding']}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        380
+      ],
+      "id": "877dbbb4-e902-46e9-9083-a62793bf6a00",
+      "name": "SetTranslatedEmbeddings"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        40,
+        -240
+      ],
+      "id": "cf7247b4-7d1d-4c8b-90da-da6cf478dabf",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        780,
+        380
+      ],
+      "id": "b7c70fb1-2b8f-40d6-81e8-1acf3428be47",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        920,
+        240
+      ],
+      "id": "7b687353-2d08-406d-8e35-9d67c702daa7",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        900,
+        0
+      ],
+      "id": "9160d402-9990-4532-b368-a94f5670407c",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        1240,
+        140
+      ],
+      "id": "5036a8b7-6081-4c96-8452-7ab1452b7514",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ensure items are correctly passed to the Function node\nif (!Array.isArray(items) || items.length === 0) {\n  throw new Error(\"Input data is not valid or items array is empty\");\n}\n\n// Process the items to convert stringified embeddings to actual arrays\nconst updatedItems = items.map(item => {\n  // Parse the embedding if it's a string\n  const parsedEmbedding = Array.isArray(item.json.embedding)\n    ? item.json.embedding\n    : JSON.parse(item.json.embedding); // Convert the stringified array\n\n  // Return the updated item with the parsed embedding\n  return {\n    json: {\n      description: item.json.description,\n      embedding: parsedEmbedding, // Embed the parsed array\n    },\n  };\n});\n\n// Return the updated items to be used in the next node\nreturn updatedItems;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        140
+      ],
+      "id": "38316fad-ced3-4ca6-aca7-d7a8b951537f",
+      "name": "embeddings structured in the proper format"
+    },
+    {
+      "parameters": {
+        "jsCode": "const catalogCount = 511; // adjust based on your use case\nconst catalog = items.slice(0, catalogCount);\nconst translated = items.slice(catalogCount);\n\nfunction parseEmbedding(embedding) {\n  return typeof embedding === \"string\" ? JSON.parse(embedding) : embedding;\n}\n\nfunction cosineSimilarity(a, b) {\n  let dot = 0, magA = 0, magB = 0;\n  for (let i = 0; i < a.length; i++) {\n    dot += a[i] * b[i];\n    magA += a[i] * a[i];\n    magB += b[i] * b[i];\n  }\n  return dot / (Math.sqrt(magA) * Math.sqrt(magB));\n}\n\nconst results = [];\n\nfor (let i = 0; i < translated.length; i++) {\n  const t = translated[i].json;\n  const tEmbedding = parseEmbedding(t.embedding);\n\n  let bestMatch = null;\n  let highestSim = -1;\n\n  for (let j = 0; j < catalog.length; j++) {\n    const c = catalog[j].json;\n    const cEmbedding = parseEmbedding(c.embedding);\n\n    const sim = cosineSimilarity(tEmbedding, cEmbedding);\n\n    if (sim > highestSim) {\n      highestSim = sim;\n      bestMatch = {\n        translatedDescription: t.description,\n        catalogDescription: c.description,\n        similarity: parseFloat(sim.toFixed(3)),\n      };\n    }\n  }\n\n  if (bestMatch) {\n    results.push({ json: bestMatch });\n  }\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        140
+      ],
+      "id": "49ea16dc-08a5-4943-937c-19f540c86041",
+      "name": "matches",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items as flat objects\nconst rows = items.map(item => item.json);\n\n// Create CSV header\nconst headers = Object.keys(rows[0]);\nconst csv = [\n  headers.join(\",\"), // header row\n  ...rows.map(row => headers.map(h => `\"${(row[h] ?? \"\").toString().replace(/\"/g, '\"\"')}\"`).join(\",\")) // data rows\n].join(\"\\n\");\n\n// Output as a single item with CSV content\nreturn [\n  {\n    json: {\n      csvContent: csv\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        140
+      ],
+      "id": "baf619c9-66f0-4bfe-bdd6-188b381bfdbf",
+      "name": "csv structure prep"
+    },
+    {
+      "parameters": {
+        "jsCode": "const csv = items[0].json.csvContent;\nconst buffer = Buffer.from(csv, 'utf-8');\n\nreturn [\n  {\n    binary: {\n      data: {\n        data: buffer.toString('base64'),\n        mimeType: 'text/csv',\n        fileName: 'matches.csv',\n      },\n    },\n    json: {}, // empty JSON is okay\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        140
+      ],
+      "id": "217e8dce-1eea-41b8-af68-5491b5096606",
+      "name": "writing to csv"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "=5191463170",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2340,
+        140
+      ],
+      "id": "4ffd572a-76d8-4e27-ab06-c3dba5b6faa3",
+      "name": "sending the csv back",
+      "webhookId": "bac84820-2dda-4b84-adec-e8132016c247",
+      "credentials": {
+        "telegramApi": {
+          "id": "fVI6thPa9jz9MQ0W",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"Authorization\": \"Bearer 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\",\n  \"Content-Type\": \"application/json\"\n}\n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"microsoft/mai-ds-r1:free\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a professional technical translator. Translate the following product description from Hebrew to English and keep formatting intact.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json[\\\"description\\\"] }}\"\n    }\n  ],\n  \"temperature\": 0.2\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -500,
+        380
+      ],
+      "id": "630b54fa-f96c-427d-8656-742d0cee323c",
+      "name": "description translation"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://strings-kit-fancy-meet.trycloudflare.com/embed",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "texts",
+              "value": "={{$json.texts}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        380
+      ],
+      "id": "9dcfa59c-d047-4558-9fd2-627af3b29d4a",
+      "name": "translated description vector embeddings"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://movements-practice-an-letting.trycloudflare.com/embed",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "texts",
+              "value": "={{$json.texts}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -620,
+        -240
+      ],
+      "id": "c92a6f7e-2364-48dc-b04c-22b08cb40e2d",
+      "name": "catalog description vector embeddings"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{$json[\"message\"][\"document\"][\"file_id\"]}}"
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1320,
+        380
+      ],
+      "id": "5d0689de-e69d-4526-8f16-2061bc7fbb5f",
+      "name": "getting file id",
+      "webhookId": "5301d508-9727-4967-9bb9-424786677ebe",
+      "credentials": {
+        "telegramApi": {
+          "id": "fVI6thPa9jz9MQ0W",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1700,
+        60
+      ],
+      "id": "ede2c4ca-a8be-47cb-b333-07cdd91481d5",
+      "name": "Wait for bot message",
+      "webhookId": "b4983389-e354-4870-9b67-f8966df44948",
+      "credentials": {
+        "telegramApi": {
+          "id": "fVI6thPa9jz9MQ0W",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json[\"message\"][\"document\"][\"mime_type\"]}}",
+                    "rightValue": "application/pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0eff570d-2ebb-4968-a528-7f26f0ecf567"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1540,
+        380
+      ],
+      "id": "f2bd2cc6-5592-45bb-b15e-dd09a4fdcb1c",
+      "name": "accept only pdfs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert array of objects into { texts: [ ... ] }\nconst texts = items.map(item => item.json.translatedDescription);\nreturn [\n  {\n    json: {\n      texts: texts\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        380
+      ],
+      "id": "2d8680ba-7ec8-48bb-98f2-584af5e6e7d8",
+      "name": "translated desc structure prep"
+    },
+    {
+      "parameters": {
+        "jsCode": "const descriptions = $items(\"Edit Fields1\").map(item => item.json.translatedDescription);\nconst embeddings = $json.embeddings;\n\nreturn descriptions.map((desc, index) => {\n  return {\n    json: {\n      description: desc,\n      embedding: embeddings[index]\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        380
+      ],
+      "id": "95aa2e6f-2368-4191-b4bc-2f79d3a393b0",
+      "name": "translated vector embeddings"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "getting catalog description alone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parsing file contents for extraction": {
+      "main": [
+        [
+          {
+            "node": "extracting pdf contents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getting just the description part": {
+      "main": [
+        [
+          {
+            "node": "description translation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extracting response from the llm": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "translated desc structure prep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "merging all descriptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getting catalog description alone": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merging all descriptions": {
+      "main": [
+        [
+          {
+            "node": "catalog description vector embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "remapping it all in a structured format for the database insertion": {
+      "main": [
+        [
+          {
+            "node": "SetCatalogEmbeddings",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "storing catalog in db",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "storing catalog in db": {
+      "main": [
+        []
+      ]
+    },
+    "extracting pdf contents": {
+      "main": [
+        [
+          {
+            "node": "getting just the description part",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetCatalogEmbeddings": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetTranslatedEmbeddings": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "embeddings structured in the proper format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "embeddings structured in the proper format": {
+      "main": [
+        [
+          {
+            "node": "matches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "matches": {
+      "main": [
+        [
+          {
+            "node": "csv structure prep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "csv structure prep": {
+      "main": [
+        [
+          {
+            "node": "writing to csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "writing to csv": {
+      "main": [
+        [
+          {
+            "node": "sending the csv back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "description translation": {
+      "main": [
+        [
+          {
+            "node": "Extracting response from the llm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "translated description vector embeddings": {
+      "main": [
+        [
+          {
+            "node": "translated vector embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "catalog description vector embeddings": {
+      "main": [
+        [
+          {
+            "node": "remapping it all in a structured format for the database insertion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getting file id": {
+      "main": [
+        [
+          {
+            "node": "parsing file contents for extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for bot message": {
+      "main": [
+        [
+          {
+            "node": "accept only pdfs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "accept only pdfs": {
+      "main": [
+        [
+          {
+            "node": "getting file id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "translated desc structure prep": {
+      "main": [
+        [
+          {
+            "node": "translated description vector embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "translated vector embeddings": {
+      "main": [
+        [
+          {
+            "node": "Supabase",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SetTranslatedEmbeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9707823e-770c-4cef-b8fe-5d5da11b58bf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "92970a4524095a152158a5f18acae557a950a835b7c886479fb20369da52d690"
+  },
+  "id": "lrLiYVl0cAUvx7xM",
+  "tags": []
+}
